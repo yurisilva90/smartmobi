@@ -1,79 +1,53 @@
 {
-  "id": "/",
   "name": "SmartMobi",
   "short_name": "SmartMobi",
-  "description": "Controle financeiro, corridas, despesas, agenda e sessão de deslocamento para motoristas.",
-  "start_url": "/",
-  "scope": "/",
+  "description": "Controle financeiro e jornada para motoristas de aplicativo",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone",
-    "minimal-ui"
-  ],
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
+  "background_color": "#F7F9FC",
   "theme_color": "#22C55E",
+  "lang": "pt-BR",
   "categories": [
     "business",
     "finance",
-    "productivity",
-    "utilities",
-    "navigation"
+    "productivity"
   ],
-  "lang": "pt-BR",
-  "dir": "ltr",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-home.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Tela inicial do SmartMobi"
-    },
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Painel SmartMobi"
     }
   ],
   "shortcuts": [
     {
       "name": "Nova corrida",
       "short_name": "Corrida",
-      "description": "Registrar uma nova corrida",
-      "url": "/index.html?action=trip",
+      "url": "./",
       "icons": [
         {
-          "src": "/icon-192.png",
+          "src": "icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -82,49 +56,14 @@
     {
       "name": "Nova despesa",
       "short_name": "Despesa",
-      "description": "Registrar uma nova despesa",
-      "url": "/index.html?action=expense",
+      "url": "./",
       "icons": [
         {
-          "src": "/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Iniciar",
-      "short_name": "Iniciar",
-      "description": "Abrir a sessão de deslocamento",
-      "url": "/index.html?action=gps",
-      "icons": [
-        {
-          "src": "/icon-192.png",
+          "src": "icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
     }
-  ],
-  "launch_handler": {
-    "client_mode": [
-      "focus-existing",
-      "auto"
-    ]
-  },
-  "protocol_handlers": [
-    {
-      "protocol": "web+smartmobi",
-      "url": "/index.html?q=%s"
-    }
-  ],
-  "share_target": {
-    "action": "/index.html?share-target",
-    "method": "GET",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  }
+  ]
 }
