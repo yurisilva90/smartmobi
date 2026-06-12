@@ -205,6 +205,41 @@ textarea.ag-input{height:80px;padding-top:13px;resize:none}
 .ag-save{height:54px;border:0;border-radius:18px;background:#22c55e;color:#fff;font-size:15px;font-weight:800;width:100%;box-shadow:0 12px 26px rgba(34,197,94,.25);margin-top:4px;cursor:pointer;touch-action:manipulation;font-family:Inter,system-ui,sans-serif}
 .ag-save:active{opacity:.9}
 
+
+/* ── Agenda Calendário ── */
+.agcal-wrap{padding:0 16px 24px}
+.agcal-month{display:flex;align-items:center;justify-content:space-between;margin:6px 0 16px}
+.agcal-month h2{font-size:20px;font-weight:800;letter-spacing:-.04em}
+.agcal-marr{width:36px;height:36px;border:1px solid #e4eaf2;border-radius:12px;background:#fff;color:#344054;font-size:18px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.agcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px}
+.agcal-wd{font-size:10px;font-weight:800;text-align:center;color:#94A3B8;letter-spacing:.07em;padding:4px 0}
+.agcal-day{min-height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:7px 4px 4px;cursor:pointer;touch-action:manipulation;background:#fff;border:1px solid transparent;transition:all .12s}
+.agcal-day:active{background:#f0f9ff}
+.agcal-day.muted{background:transparent;border-color:transparent;box-shadow:none}
+.agcal-day.muted span{color:#CBD5E1}
+.agcal-day.today-d span{color:#0ea5e9;font-weight:800}
+.agcal-day.today-d{border-color:rgba(14,165,233,.25);background:rgba(14,165,233,.05)}
+.agcal-day.sel{background:#0ea5e9;border-color:#0ea5e9}
+.agcal-day.sel span{color:#fff;font-weight:800}
+.agcal-day span{font-size:14px;font-weight:600;color:#101828;line-height:1}
+.agcal-dots{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;justify-content:center}
+.agcal-dot{width:6px;height:6px;border-radius:50%}
+.agcal-dot.green{background:#22c55e}.agcal-dot.blue{background:#3b82f6}
+.agcal-dot.orange{background:#f59e0b}.agcal-dot.purple{background:#8b5cf6}
+.agcal-dot.red{background:#ef4444}.agcal-dot.gray{background:#CBD5E1}
+.agcal-sel-card{background:#fff;border:1px solid rgba(15,23,42,.06);border-radius:24px;box-shadow:0 8px 24px rgba(15,23,42,.06);overflow:hidden;margin-bottom:14px}
+.agcal-sel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.agcal-sel-head h3{font-size:17px;font-weight:800;letter-spacing:-.03em}
+.agcal-sel-head p{font-size:12px;color:#667085;margin-top:2px}
+.agcal-ev{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f1f5f9}
+.agcal-ev-bar{width:4px;height:40px;border-radius:4px;flex-shrink:0}
+.agcal-ev-ico{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.agcal-ev-ico svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+.agcal-ev-title{font-size:14px;font-weight:700;letter-spacing:-.02em}
+.agcal-ev-meta{font-size:11px;color:#667085;margin-top:2px}
+.agcal-empty{padding:20px;text-align:center;color:#94A3B8;font-size:13px;border-top:1px solid #f1f5f9}
+.agcal-fab{position:sticky;bottom:80px;float:right;margin-right:0;width:52px;height:52px;border-radius:50%;background:#22c55e;border:none;color:#fff;font-size:26px;font-weight:300;cursor:pointer;touch-action:manipulation;box-shadow:0 10px 24px rgba(34,197,94,.3);display:flex;align-items:center;justify-content:center;line-height:1;margin-bottom:8px}
+
 </style>
 </head>
 <body>
@@ -459,12 +494,27 @@ textarea.ag-input{height:80px;padding-top:13px;resize:none}
     <div style="height:12px"></div>
   </div>
 
-  <!-- ── CALENDÁRIO (placeholder) ── -->
+  <!-- ── CALENDÁRIO ── -->
   <div id="ag-v-cal" style="display:none">
-    <div style="padding:40px 16px;text-align:center">
-      <svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="#CBD5E1" stroke-width="1.5" style="margin-bottom:16px"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
-      <div style="font-size:18px;font-weight:700;color:#64748B;margin-bottom:8px">Calendário</div>
-      <div style="font-size:13px;color:#94A3B8">Design em finalização — em breve</div>
+    <div class="agcal-wrap">
+      <div class="agcal-month">
+        <button class="agcal-marr" onclick="agCalNav(-1)">&#8249;</button>
+        <h2 id="agcal-title">Junho 2026</h2>
+        <button class="agcal-marr" onclick="agCalNav(1)">&#8250;</button>
+      </div>
+      <div class="agcal-grid">
+        <div class="agcal-wd">DOM</div><div class="agcal-wd">SEG</div><div class="agcal-wd">TER</div>
+        <div class="agcal-wd">QUA</div><div class="agcal-wd">QUI</div><div class="agcal-wd">SEX</div><div class="agcal-wd">S&#193;B</div>
+        <div id="agcal-days"></div>
+      </div>
+      <div class="agcal-sel-card" id="agcal-sel-card">
+        <div class="agcal-sel-head">
+          <div><h3 id="agcal-sel-title">Selecione um dia</h3><p id="agcal-sel-dow"></p></div>
+          <button class="ag-pill" onclick="agCalToday()">Hoje</button>
+        </div>
+        <div id="agcal-evlist"></div>
+      </div>
+      <button class="agcal-fab" onclick="openNovoEv(agCalSelDate,null)">+</button>
     </div>
   </div>
 
@@ -1863,6 +1913,7 @@ function setAgView(v) {
   });
   if (v === 'resumo') renderAgResumo();
   if (v === 'dia')    renderAgDia();
+  if (v === 'cal')    renderAgCal();
 }
 function agGoToday() {
   agSelDate = DB.today();
@@ -2095,6 +2146,130 @@ function formatElapsed(secs) {
 }
 
 
+
+// ============================================================
+// AGENDA CALENDÁRIO
+// ============================================================
+let agCalY    = new Date().getFullYear();
+let agCalM    = new Date().getMonth();
+let agCalSelDate = DB.today();
+
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAY_ABVS    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function renderAgCal() {
+  const titleEl = document.getElementById('agcal-title');
+  if (titleEl) titleEl.textContent = MONTH_NAMES[agCalM] + ' ' + agCalY;
+  const daysEl = document.getElementById('agcal-days');
+  if (!daysEl) return;
+  // Build grid
+  const firstDay  = new Date(agCalY, agCalM, 1).getDay();  // 0=Sun
+  const daysInMon = new Date(agCalY, agCalM+1, 0).getDate();
+  const prevDays  = new Date(agCalY, agCalM, 0).getDate();
+  const today     = DB.today();
+  const allEvs    = DB.events();
+  let html = '';
+  // Prev month padding
+  for (let i = firstDay-1; i >= 0; i--) {
+    html += `<div class="agcal-day muted"><span>${prevDays-i}</span></div>`;
+  }
+  // Current month
+  for (let d = 1; d <= daysInMon; d++) {
+    const ds  = agCalY+'-'+p2(agCalM+1)+'-'+p2(d);
+    const isTod = ds === today;
+    const isSel = ds === agCalSelDate;
+    const cls   = 'agcal-day'+(isSel?' sel':isTod?' today-d':'');
+    // Dots: GPS session + events (max 3)
+    const hasSess = !!DB.day(ds).session;
+    const dayEvs  = allEvs.filter(e => e.date === ds);
+    const dots    = [];
+    if (hasSess) dots.push('green');
+    dayEvs.forEach(e => { if (dots.length < 3) dots.push(colorClass(e.color||'#3b82f6')); });
+    const dotsHtml = dots.length ? '<div class="agcal-dots">'+dots.map(cl=>`<div class="agcal-dot ${cl}"></div>`).join('')+'</div>' : '';
+    html += `<div class="${cls}" onclick="agCalSelect('${ds}')"><span>${d}</span>${dotsHtml}</div>`;
+  }
+  // Next month padding
+  const used  = firstDay + daysInMon;
+  const rows  = Math.ceil(used/7);
+  const total = rows * 7;
+  for (let i = 1; i <= total-used; i++) {
+    html += `<div class="agcal-day muted"><span>${i}</span></div>`;
+  }
+  // Replace all days (grid is 7 cols but days div fills span)
+  daysEl.outerHTML = `<div id="agcal-days" style="display:contents">${html}</div>`;
+  agCalRenderDay();
+}
+
+function colorClass(hex) {
+  const m = {'#22c55e':'green','#3b82f6':'blue','#f59e0b':'orange','#8b5cf6':'purple','#ef4444':'red'};
+  return m[hex] || 'blue';
+}
+
+function agCalRenderDay() {
+  const dt    = new Date(agCalSelDate+'T12:00');
+  const ms    = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const titleEl = document.getElementById('agcal-sel-title');
+  const dowEl   = document.getElementById('agcal-sel-dow');
+  if (titleEl) titleEl.textContent = p2(dt.getDate())+' de '+ms[dt.getMonth()]+' de '+dt.getFullYear();
+  if (dowEl)   dowEl.textContent   = DAY_ABVS[dt.getDay()]+'-feira';
+  const evList = document.getElementById('agcal-evlist');
+  if (!evList) return;
+  const allEvs  = DB.events().filter(e => e.date === agCalSelDate);
+  const daySess = DB.day(agCalSelDate).session;
+  const items   = [...(daySess ? [{id:'_s',title:'Jornada',type:'jornada',timeStart:'—',color:'#22c55e',notes:daySess.km.toFixed(1)+'km registrados'}] : []), ...allEvs];
+  if (!items.length) {
+    evList.innerHTML = '<div class="agcal-empty">Nenhum evento neste dia</div>'; return;
+  }
+  evList.innerHTML = items.map(ev => {
+    const cc   = colorClass(ev.color||'#3b82f6');
+    const ico  = agCalIcon(ev);
+    const time = ev.timeStart && ev.timeStart!=='—' ? (ev.timeEnd&&ev.timeEnd!=='—'?ev.timeStart+' → '+ev.timeEnd:ev.timeStart) : '';
+    const meta = [time, ev.notes].filter(Boolean).join(' · ');
+    const bgMap= {'green':'rgba(34,197,94,.1)','blue':'rgba(59,130,246,.1)','orange':'rgba(245,158,11,.1)','purple':'rgba(139,92,246,.1)','red':'rgba(239,68,68,.1)'};
+    const fgMap= {'green':'#22c55e','blue':'#3b82f6','orange':'#f59e0b','purple':'#8b5cf6','red':'#ef4444'};
+    return `<div class="agcal-ev">
+      <div class="agcal-ev-bar" style="background:${fgMap[cc]||'#3b82f6'}"></div>
+      <div class="agcal-ev-ico" style="background:${bgMap[cc]||bgMap.blue};color:${fgMap[cc]||'#3b82f6'}">${ico}</div>
+      <div style="flex:1;min-width:0">
+        <div class="agcal-ev-title">${ev.title}</div>
+        ${meta?`<div class="agcal-ev-meta">${meta}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function agCalIcon(ev) {
+  if (ev.type==='jornada') return '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>';
+  if (ev.type==='finance') return '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>';
+  return '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+}
+
+function agCalSelect(ds) {
+  agCalSelDate = ds;
+  // Also update global agSelDate for openNovoEv
+  agSelDate = ds;
+  // Navigate to month if needed
+  const dt = new Date(ds+'T12:00');
+  agCalY = dt.getFullYear(); agCalM = dt.getMonth();
+  renderAgCal();
+}
+
+function agCalNav(d) {
+  agCalM += d;
+  if (agCalM < 0)  { agCalM = 11; agCalY--; }
+  if (agCalM > 11) { agCalM = 0;  agCalY++; }
+  renderAgCal();
+}
+
+function agCalToday() {
+  agCalSelDate = DB.today();
+  agSelDate    = agCalSelDate;
+  const dt = new Date(agCalSelDate+'T12:00');
+  agCalY = dt.getFullYear(); agCalM = dt.getMonth();
+  renderAgCal();
+}
+
+
 // ── INIT ──────────────────────────────────────────────────────
 const initCfg = DB.cfg();
 if (initCfg.name) { const el=document.getElementById('p-nome'); if(el) el.value=initCfg.name; }
@@ -2117,6 +2292,7 @@ renderJornada();
 renderFin();
 updateFavBtn();
 renderAgResumo();
+agCalY=new Date().getFullYear();agCalM=new Date().getMonth();agCalSelDate=DB.today();
 
 </script>
 </body>
