@@ -4279,6 +4279,10 @@ async function refreshAutoTripFromLog(tripId, btnEl) {
       if (!saved) { showToast('Erro ao salvar.', 'error'); return; }
       showToast('Corrigido: '+r.changes.join(', '), 'success');
       S.autoTripsDate = null; S.autoTripsHomeRange = null;
+      // Ver comentário em window.invalidateJourneyAutoCache — sem isso a
+      // lista "Corridas desta jornada" dentro do card de sessão ficava com
+      // o valor velho até o TTL do cache vencer sozinho.
+      try { window.invalidateJourneyAutoCache && window.invalidateJourneyAutoCache(); } catch(e) {}
       if (S.sec === 'jornada') renderJornada();
       if (S.sec === 'relatorios') renderHomeGraphs();
       if (S.sec === 'corridas') renderCorridasActive();
@@ -15272,6 +15276,17 @@ async function feedEnviarComentario(){
 
   // ── Corridas de uma Jornada: busca por INTERVALO REAL, não por data ──
   const journeyAutoCache = new Map();
+  // CORRIGIDO (08/09/2026, relatado pelo Yuri: valor de corrida corrigido
+  // não aparece na hora, só depois de reabrir a Jornada): a lista "Corridas
+  // desta jornada" dentro do card de sessão é alimentada por ESTE cache
+  // privado, separado do S._autoTripsByDate usado pelos KPIs do topo.
+  // refreshAutoTripFromLog() salva a correção no Supabase e zera
+  // S.autoTripsDate (atualiza os KPIs), mas não tinha como alcançar este
+  // cache — scoped dentro desta IIFE — então a linha da corrida na lista
+  // continuava mostrando o valor velho até o TTL vencer sozinho (12s numa
+  // sessão ativa, 2min numa já encerrada). Exposto aqui pra ser invalidado
+  // de fora, mesmo padrão de window.* já usado no resto do arquivo.
+  window.invalidateJourneyAutoCache = function(){ journeyAutoCache.clear(); };
   const journeyStatusCache = new Map();
   const overlapSessionCache = new Map();
   const civilStatusCache = new Map();
@@ -15453,6 +15468,19 @@ async function feedEnviarComentario(){
     });
     el.innerHTML=html.length?html.join(''):'<div class="empty">Nenhuma sessão registrada</div>';
     if(toggle){toggle.style.display=desc.length>3?'':'none';toggle.innerHTML=S.sessionsExpanded?'Ver menos':'Ver todas &#8250;';}
+    // CORRIGIDO (08/09/2026, relatado pelo Yuri: seta minimiza sozinha ao
+    // clicar): esta função recria o HTML do zero — card novo nasce sempre
+    // fechado. As 4 rotinas assíncronas que chamam renderContinuousSessionList()
+    // direto (ensureJourneyAutoTrips 12s/120s, ensureJourneyStatus 8s/120s,
+    // ensureOverlapSessions, ensureCivilStatus 8s) ficam por fora do wrapper
+    // window.renderJornada() — único lugar que reaplicava o card aberto — então
+    // o card que o usuário acabou de abrir fechava sozinho assim que qualquer
+    // uma delas terminasse em paralelo, geralmente segundos após o clique.
+    // Chamando aqui, dentro da própria função que recria o HTML, cobre as 4
+    // rotinas de uma vez e o wrapper (que já chama isso de novo) fica só como
+    // redundância inofensiva.
+    try{reapplyOpenJss();}catch(e){}
+    try{reapplyOpenTripDetail();}catch(e){}
   }
 
   // Link de corrida ↔ Jornada agora procura TODAS as sessões; uma corrida de 01:30
