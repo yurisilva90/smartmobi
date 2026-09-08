@@ -5159,7 +5159,18 @@ function renderJourneyCard(day, isToday) {
   // day.trips (Importadas) — sessão só com automáticas mostrava tudo
   // zerado mesmo com corridas de verdade rodando. Mesma correção que já
   // tinha sido feita em rev/sessionItem/renderMetasDoDia, faltava aqui.
-  const autoTripsHoje = day.autoTrips || [];
+  // CORRIGIDO (08/09/2026): gpsUpdate() chama renderJourneyCard(DB.day(S.curDate))
+  // 1x POR SEGUNDO com um objeto RECEM-LIDO do localStorage. DB.day() monta um
+  // objeto novo a cada chamada e NUNCA traz .autoTrips — essa propriedade so
+  // existe no objeto local que renderJornada() monta. Resultado: o render
+  // completo publicava "1 corrida" e o tick seguinte republicava tudo com
+  // lista vazia (corridas 0, km ativo 0, R$/h e R$/km recalculados com
+  // ganhos 0). Era exatamente a oscilacao 1 -> 0 -> 1 -> 0 na tela.
+  // Agora a fonte automatica e resolvida AQUI, pelo cache de estado, sem
+  // depender de quem chamou a funcao.
+  const autoTripsHoje = Array.isArray(day.autoTrips) ? day.autoTrips
+    : (Array.isArray(S._autoTripsByDate && S._autoTripsByDate[cardDate]) ? S._autoTripsByDate[cardDate]
+      : ((S._autoTripsDataDate === cardDate && Array.isArray(S.autoTrips)) ? S.autoTrips : []));
   const journeySrc = journeyConsolidatedSources(day, autoTripsHoje);
   const legacyTripsHoje = journeySrc.legacy;
   const autoTripsReady = S._autoTripsDataDate === cardDate || Array.isArray(S._autoTripsByDate?.[cardDate]);
@@ -9100,7 +9111,20 @@ async function _refreshAutoTripsIfOnJornada() {
   try {
     const list = await loadAutoTripsForDay(S.curDate);
     if (!Array.isArray(list)) return; // falha não vira "zero corridas"
-    S.autoTrips = list; S.autoTripsDate = S.curDate; S._autoTripsDataDate = S.curDate;
+    // CORRIGIDO (08/09/2026): este refresh de 25s gravava SO em S.autoTrips.
+    // renderJornada() prioriza S._autoTripsByDate[data] e sobrescrevia a lista
+    // recem-buscada com a versao antiga do cache — a corrida nova sumia da tela
+    // ate o TTL de 15s disparar outra consulta. Agora escreve no cache oficial,
+    // mantendo a mesma protecao: leitura vazia transitoria nunca apaga corridas
+    // que ja apareceram.
+    const _d0 = S.curDate;
+    S._autoTripsByDate = S._autoTripsByDate || {};
+    S._autoTripsLastFetch = S._autoTripsLastFetch || {};
+    const _prev0 = Array.isArray(S._autoTripsByDate[_d0]) ? S._autoTripsByDate[_d0] : [];
+    const _stable0 = (list.length === 0 && _prev0.length > 0) ? _prev0 : list;
+    S._autoTripsByDate[_d0] = _stable0;
+    S._autoTripsLastFetch[_d0] = Date.now();
+    S.autoTrips = _stable0; S.autoTripsDate = _d0; S._autoTripsDataDate = _d0;
     renderJornada();
   } catch(e) {}
 }
