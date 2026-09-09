@@ -7545,21 +7545,28 @@ async function processImportBatch(images, videos, plat) {
     updateRing('Analisando print' + (totalImgs>1 ? ' ' + Math.min(i+2,totalImgs) + ' de ' + totalImgs : '') + ' ' + dot, false);
   }
   let videoFrameReadFailed = false;
+  const FRAME_BATCH_SIZE = 5; // manda vários quadros juntos na mesma chamada — a
+  // IA enxerga os quadros lado a lado e consegue completar um cartão cortado
+  // num frame usando o vizinho, em vez de ler cada quadro isolado sem contexto
+  // (mesma técnica usada quando um vídeo é lido aqui no chat).
   for (let v = 0; v < videos.length; v++) {
     try {
       updateRing('Preparando vídeo ' + dot, false);
       const frames = await extractVideoFrames(videos[v], (done, total) => {
         updateRing('Preparando vídeo · ' + done + '/' + total + ' quadros ' + dot, false);
       });
-      for (let i = 0; i < frames.length; i++) {
+      const totalBatches = Math.ceil(frames.length / FRAME_BATCH_SIZE) || 0;
+      for (let b = 0; b < totalBatches; b++) {
+        const batch = frames.slice(b * FRAME_BATCH_SIZE, (b + 1) * FRAME_BATCH_SIZE);
         try {
           const trips = await extractWithRetry(
-            () => extractTripsFromBase64(frames[i], 'image/jpeg', plat),
+            () => extractTripsFromFramesBatch(batch, plat),
             () => updateRing(retryIcon + ' Processando novamente...', true)
           );
           absorb(trips);
-        } catch(e) { console.warn('Frame erro (desistiu após 3 tentativas):', e); }
-        updateRing('Analisando vídeo · ' + (i+1) + '/' + frames.length + ' quadros ' + dot, false);
+        } catch(e) { console.warn('Lote de quadros erro (desistiu após 3 tentativas):', e); }
+        const framesDone = Math.min((b + 1) * FRAME_BATCH_SIZE, frames.length);
+        updateRing('Analisando vídeo · ' + framesDone + '/' + frames.length + ' quadros ' + dot, false);
       }
     } catch(e) { videoFrameReadFailed = true; console.warn('Erro vídeo '+(v+1)+':', e); }
   }
@@ -8117,12 +8124,17 @@ async function extractTripsFromImage(file, plat) {
   return extractTripsFromBase64(b64, file.type||'image/jpeg', plat);
 }
 
-async function extractTripsFromBase64(b64, mt, plat) {
+// Prompt único — a IA identifica sozinha se é Uber ou 99 pelo layout da
+// imagem (em vez de confiar em qual botão o usuário tocou, que pode estar
+// errado). Cada corrida retornada inclui "platform":"uber"|"99".
+// multiFrame=true adiciona instrução de como usar frames vizinhos entre si
+// (usado no lote de vídeo, ver extractTripsFromFramesBatch).
+function buildImportPrompt(multiFrame) {
   const cashWarning = 'ATENÇÃO — confusão comum: "Dinheiro recebido" (ícone de câmera/recibo) NÃO é gorjeta nem dinâmico, é so a forma de pagamento (o passageiro pagou em espécie). Quando uma corrida tiver "Preço dinâmico" (ícone de raio) E "Dinheiro recebido" juntas, são DUAS linhas diferentes — extraia SÓ o valor do "Preço dinâmico" em dinamico, e NUNCA coloque o valor de "Dinheiro recebido" em gorjeta (nem em dinamico, nem em value). Exemplo: corrida com "R$ 12,50 Preço dinâmico" e "R$ 27,05 Dinheiro recebido" → dinamico:12.50, gorjeta:0.00 (o R$27,05 não entra em lugar nenhum do JSON).';
-  // Prompt único — a IA identifica sozinha se é Uber ou 99 pelo layout da
-  // imagem (em vez de confiar em qual botão o usuário tocou, que pode estar
-  // errado). Cada corrida retornada inclui "platform":"uber"|"99".
-  const prompt = 'Esta imagem mostra uma tela do app de motorista — pode ser: (1) UBER, tela "Histórico de ganhos" (lista de corridas com linha divisória entre elas, "Preço dinâmico" com ícone de raio, "Valor extra" com ícone de mão/coração = gorjeta); (2) 99 LISTA, tela "Histórico de corridas" do app 99 Motorista (ícone de carro + texto "Pop", tag laranja "Taxa Fixa de X%", "Ganhos pagos no app" ou "Ganhos pagos em dinheiro"); ou (3) 99 DETALHE, tela "Detalhes da corrida" do 99 (título "Detalhes da corrida" no topo, "Você ganhou R$X" em destaque, campos "Duração" e "Distância"). PRIMEIRO identifique qual das três telas é, pelo layout, e siga SOMENTE as regras dessa tela, abaixo. Inclua "platform":"uber" ou "platform":"99" em cada item do JSON (uma imagem só tem UMA plataforma e UM tipo de tela, nunca misture).\n\n' +
+  const multiFramePreamble = multiFrame ?
+    'Você vai receber VÁRIAS imagens em sequência, extraídas de um vídeo de rolagem contínua da lista, na ordem em que apareceram (a primeira imagem é o quadro mais antigo). Frames vizinhos se sobrepõem bastante — a MESMA corrida real aparece completa em mais de um frame. Use isso a seu favor: se um cartão está cortado no topo ou na base de UM frame específico, procure esse mesmo cartão COMPLETO em outro frame do conjunto antes de descartá-lo por estar cortado. No final, devolva um ÚNICO array de JSON com as corridas distintas de TODO o conjunto de frames — nunca repita a mesma corrida (mesmo "time") mesmo que ela apareça completa em vários frames diferentes.\n\n'
+    : '';
+  return multiFramePreamble + 'Esta imagem mostra uma tela do app de motorista — pode ser: (1) UBER, tela "Histórico de ganhos" (lista de corridas com linha divisória entre elas, "Preço dinâmico" com ícone de raio, "Valor extra" com ícone de mão/coração = gorjeta); (2) 99 LISTA, tela "Histórico de corridas" do app 99 Motorista (ícone de carro + texto "Pop", tag laranja "Taxa Fixa de X%", "Ganhos pagos no app" ou "Ganhos pagos em dinheiro"); ou (3) 99 DETALHE, tela "Detalhes da corrida" do 99 (título "Detalhes da corrida" no topo, "Você ganhou R$X" em destaque, campos "Duração" e "Distância"). PRIMEIRO identifique qual das três telas é, pelo layout, e siga SOMENTE as regras dessa tela, abaixo. Inclua "platform":"uber" ou "platform":"99" em cada item do JSON (uma imagem só tem UMA plataforma e UM tipo de tela, nunca misture).\n\n' +
     '=== SE FOR UBER ===\n' +
     'Extraia CADA corrida, mas SÓ quando ela aparecer COMPLETA na imagem (com a linha divisória acima e abaixo) — se uma corrida estiver cortada no topo ou na base da imagem (incompleta), IGNORE essa corrida, não tente adivinhar ou completar com dados de outra. Ignore Missão (R$ 0,00). ' + cashWarning + ' Abaixo do valor principal de cada corrida também pode aparecer "Valor extra" (ícone de mão/coração — é a gorjeta do passageiro) — extraia esse valor em gorjeta quando existir. Também pode aparecer "Pedágio R$X,XX" — extraia esse valor em pedagio quando existir (0.00 quando não aparecer). Cada corrida mostra dois endereços (origem e destino): copie a linha de texto INTEIRA, palavra por palavra, exatamente como está escrita na tela, sem resumir ou cortar nenhuma parte, em "originFull"/"destFull". E TAMBÉM extraia só o nome do bairro (sem rua, número, cidade, UF ou CEP) em "origin"/"dest" — ex: se o texto na tela é "Rua Corcovado, 213, Jardim Botânico - Rio de Janeiro - RJ, 22460-050, BR", então origin="Jardim Botânico" e originFull="Rua Corcovado, 213, Jardim Botânico - Rio de Janeiro - RJ, 22460-050, BR" (a linha inteira, não abreviada). Formato de cada item: {"platform":"uber","time":"HH:MM","value":0.00,"km":0.0,"duration":0,"category":"Black","origin":"bairro","originFull":"endereço completo","dest":"bairro","destFull":"endereço completo","dinamico":0.00,"gorjeta":0.00,"pedagio":0.00,"taxaZero":false,"dinheiro":false}. duration=minutos inteiros. dinamico, gorjeta e pedagio ficam 0.00 quando não aparecerem. "taxaZero":true se houver indicação de 0% de taxa. "dinheiro":true se pagamento em dinheiro.\n\n' +
     '=== SE FOR 99 ===\n' +
@@ -8152,25 +8164,34 @@ async function extractTripsFromBase64(b64, mt, plat) {
     'Campos: "duration" = Duração convertida pra MINUTOS INTEIROS arredondados (12m50s → 13; 5m42s → 6), null se não aparecer neste frame. "km" = número de Distância (6,2 km → 6.2), null se não aparecer. "time" = horário HH:MM da data completa (ex "06/07/2026 15:51:42" → "15:51"), null se não aparecer neste frame. "originFull"/"destFull" = endereço completo dos pontos verde(origem)/laranja(destino) quando visíveis, null se não aparecerem; "origin"/"dest" = bairro extraído desses endereços (nunca a cidade sozinha — mesma regra da lista). ' +
     'Formato (retorne um array com este único item; campos não vistos = null): {"platform":"99","screen":"detail","time":null,"km":null,"duration":null,"origin":null,"originFull":null,"dest":null,"destFull":null}.\n\n' +
     'Retorne SOMENTE um único JSON array, sem texto extra. Se não houver corridas completas retorne [].';
+}
+
+// Chama o proxy com um ou mais blocos de imagem numa única mensagem —
+// timeout/max_tokens escalam com o tamanho do pedido (lote de vídeo manda
+// mais de uma imagem por chamada, print manda uma só).
+async function callImportAPI(contentBlocks, timeoutMs, maxTokens) {
   const requestController = new AbortController();
-  const requestTimer = setTimeout(() => requestController.abort(), 25000);
+  const requestTimer = setTimeout(() => requestController.abort(), timeoutMs);
   let resp;
   try {
     resp = await fetch('https://smartmobi-proxy.yurisilva1990.workers.dev', {
       method:'POST', headers:{'Content-Type':'application/json'}, signal:requestController.signal,
-      body: JSON.stringify({model:'claude-haiku-4-5-20251001', max_tokens:1500,
-        messages:[{role:'user', content:[{type:'image',source:{type:'base64',media_type:mt,data:b64}},{type:'text',text:prompt}]}]})
+      body: JSON.stringify({model:'claude-haiku-4-5-20251001', max_tokens:maxTokens,
+        messages:[{role:'user', content:contentBlocks}]})
     });
   } catch(e) {
-    if (e && e.name === 'AbortError') throw new Error('Tempo esgotado ao analisar quadro');
+    if (e && e.name === 'AbortError') throw new Error('Tempo esgotado ao analisar quadro(s)');
     throw e;
   } finally {
     clearTimeout(requestTimer);
   }
   if (!resp.ok) throw new Error('Worker error ' + resp.status);
   const data = await resp.json();
-  const raw  = ((data.content?.[0]?.text)||'[]').replace(/```json|```/g,'').trim();
-  const arr  = JSON.parse(raw);
+  return ((data.content?.[0]?.text)||'[]').replace(/```json|```/g,'').trim();
+}
+
+function parseImportTrips(raw, plat) {
+  const arr = JSON.parse(raw);
   return Array.isArray(arr) ? arr.map(t => {
     const isDetail = t.screen === 'detail';
     const numOrNull = v => (v === null || v === undefined || v === '') ? null : (parseFloat(String(v).replace(',','.'))||0);
@@ -8220,6 +8241,29 @@ async function extractTripsFromBase64(b64, mt, plat) {
         : (t.dinheiro===true||t.dinheiro==='true'||t.dinheiro===1),
       time: isDetail ? (t.time ? normTime(t.time) : null) : t.time };
   }) : [];
+}
+
+async function extractTripsFromBase64(b64, mt, plat) {
+  const prompt = buildImportPrompt(false);
+  const raw = await callImportAPI(
+    [{type:'image',source:{type:'base64',media_type:mt,data:b64}},{type:'text',text:prompt}],
+    25000, 1500);
+  return parseImportTrips(raw, plat);
+}
+
+// Manda vários quadros do vídeo NUMA SÓ chamada em vez de um
+// por vez isolado — frame isolado não tem como saber o que tem no vizinho,
+// então um cartão cortado no topo/base de um frame específico sempre ficava
+// de fora. Em lote, o modelo enxerga os quadros lado a lado (igual eu
+// enxergo quando leio um vídeo aqui no chat) e consegue completar o cartão
+// usando o frame vizinho, além de deduplicar a corrida repetida sozinho.
+async function extractTripsFromFramesBatch(frames, plat) {
+  const prompt = buildImportPrompt(frames.length > 1);
+  const imageBlocks = frames.map(f => ({type:'image', source:{type:'base64', media_type:'image/jpeg', data:f}}));
+  const timeoutMs = Math.min(90000, 25000 + 15000 * (frames.length - 1));
+  const maxTokens = Math.min(4000, 1200 + 500 * frames.length);
+  const raw = await callImportAPI([...imageBlocks, {type:'text', text:prompt}], timeoutMs, maxTokens);
+  return parseImportTrips(raw, plat);
 }
 
 
